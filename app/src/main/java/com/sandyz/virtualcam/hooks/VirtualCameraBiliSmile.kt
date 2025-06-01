@@ -40,6 +40,7 @@ class VirtualCameraBiliSmile : IHook {
         "com.smile.gifmaker",
         "com.tencent.mm",
         "com.tencent.mobileqq",
+        "com.sandyz.virtualcam"
     )
 
     override fun init(cl: ClassLoader?) {

@@ -2,6 +2,7 @@ package com.sandyz.virtualcam.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.hardware.Camera
 import android.os.Build
 import android.os.Bundle
 import android.view.SurfaceHolder
@@ -28,7 +29,7 @@ class MainActivity : AppCompatActivity() {
 
 
     companion object {
-        var URI_PATH_ROOT = ""
+        var URI_PATH_ROOT = "/sdcard/Android/data/com.sandyz.virtualcam/cache/"
         const val URI_FILE_NAME = "stream.txt"
         var uriString = ""
 
@@ -56,12 +57,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private var afterRequestPermissionCallback: (() -> Unit)? = null
+    private var camera : Camera? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
 
         val btnLocal = findViewById<Button>(R.id.btn_local)
         val btnSav = findViewById<Button>(R.id.btn_sav)
@@ -70,11 +71,12 @@ class MainActivity : AppCompatActivity() {
         val surfaceView = findViewById<SurfaceView>(R.id.surfaceView)
         surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
-                holder.lockCanvas()?.let {
-                    it.drawColor(0xffff0000.toInt())
-                    it.drawText("Hello World", 100f, 100f, TextView(this@MainActivity).paint)
-                    holder.unlockCanvasAndPost(it)
-                }
+                // FIXME: lineage 有问题，必须注释
+//                holder.lockCanvas()?.let {
+//                    it.drawColor(0xffff0000.toInt())
+//                    it.drawText("Hello World", 100f, 100f, TextView(this@MainActivity).paint)
+//                    holder.unlockCanvasAndPost(it)
+//                }
             }
 
             override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -84,24 +86,12 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-
-//        doIfPermission {
-//            etUri.setText(getUri())
-//        }
-
         btnSav.setOnClickListener {
             doIfPermission {
-                val dir = File(URI_PATH_ROOT)
-                if (!dir.exists()) {
-                    val mkd = dir.mkdirs()
-                    Toast.makeText(this@MainActivity, "创建目录：$mkd", Toast.LENGTH_SHORT).show()
-                }
                 etUri.setText(etUri.text.toString().replace("https", "http").replace("\n", ""))
                 val uri = etUri.text.toString()
                 uriString = uri
-
-                val file = File(URI_PATH_ROOT + URI_FILE_NAME)
-
+                val file = File(externalCacheDir, URI_FILE_NAME)
                 try {
                     if (!file.exists()) {
                         file.createNewFile()
@@ -116,7 +106,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        btnLocal.setOnClickListener {
+            camera = Camera.open(Camera.CameraInfo.CAMERA_FACING_FRONT)
+            camera?.setPreviewDisplay(surfaceView.holder)
+            camera?.startPreview()
+            btnLocal.isEnabled = false
+        }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), 101)
+        }
     }
 
     private fun doIfPermission(callback: (() -> Unit)?) {
@@ -163,5 +162,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
+    override fun onDestroy() {
+        camera?.let {
+            it.stopPreview()
+            it.release()
+        }
+        super.onDestroy()
+    }
 }

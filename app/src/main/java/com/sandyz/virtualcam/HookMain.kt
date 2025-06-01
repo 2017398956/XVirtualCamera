@@ -5,6 +5,7 @@ import android.app.Application
 import android.app.Instrumentation
 import android.content.res.XModuleResources
 import android.content.res.XResources
+import android.util.Log
 import com.sandyz.virtualcam.hooks.IHook
 import com.sandyz.virtualcam.hooks.VirtualCameraBiliSmile
 import com.sandyz.virtualcam.hooks.VirtualCameraDy
@@ -31,13 +32,14 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage
 class HookMain : IXposedHookLoadPackage, IXposedHookZygoteInit, IXposedHookInitPackageResources {
 
     companion object {
-        public var modulePath: String? = null
+        const val TAG = "HookMain"
+        const val SELF_PACKAGE_NAME = "com.sandyz.virtualcam"
+        var modulePath: String? = null
         private var moduleRes: String? = null
-        var xResources: XResources? = null
-
+        private var xResources: XResources? = null
 
         @SuppressLint("UnsafeDynamicallyLoadedCode")
-        fun loadNative() {
+        private fun loadNative() {
             val libs = arrayOf(
                 "$modulePath/lib/arm64-v8a/libijkffmpeg.so",
                 "$modulePath/lib/arm64-v8a/libijksdl.so",
@@ -82,7 +84,6 @@ class HookMain : IXposedHookLoadPackage, IXposedHookZygoteInit, IXposedHookInitP
         VirtualCameraWs(),
     )
 
-
     override fun initZygote(startupParam: StartupParam) {
         modulePath = startupParam.modulePath.substring(0, startupParam.modulePath.lastIndexOf('/'))
         moduleRes = startupParam.modulePath
@@ -90,7 +91,7 @@ class HookMain : IXposedHookLoadPackage, IXposedHookZygoteInit, IXposedHookInitP
 
     override fun handleInitPackageResources(resparam: XC_InitPackageResources.InitPackageResourcesParam?) {
         xResources = resparam?.res
-        var supported = (resparam?.packageName == "com.sandyz.virtualcam")
+        var supported = (resparam?.packageName == SELF_PACKAGE_NAME)
         hooks.forEach {
             it.getSupportedPackages().forEach { pkg ->
                 if (pkg == resparam?.packageName) {
@@ -110,14 +111,16 @@ class HookMain : IXposedHookLoadPackage, IXposedHookZygoteInit, IXposedHookInitP
         HookUtils.init(lpparam)
 
         hooks.forEach {
-            var supported = (lpparam.packageName == "com.sandyz.virtualcam")
+//            var supported = (lpparam.packageName == SELF_PACKAGE_NAME)
+            var supported = false
             it.getSupportedPackages().forEach { pkg ->
                 if (pkg == lpparam.packageName) {
                     supported = true
+                    return@forEach
                 }
             }
             if (!supported) {
-                 xLog("init>>>>${it.getName()}>>>> unsupported! ===================== package: ${lpparam?.packageName} process: ${lpparam?.processName}")
+                 xLog("init>>>>${it.getName()}>>>> unsupported! ===================== package: ${lpparam.packageName} process: ${lpparam.processName}")
             } else {
                 xLog("init>>>>${it.getName()}>>>> package: ${lpparam.packageName} process: ${lpparam.processName}")
                 loadNative()
@@ -127,14 +130,14 @@ class HookMain : IXposedHookLoadPackage, IXposedHookZygoteInit, IXposedHookInitP
                     }
                 })
             }
+            return@forEach
         }
     }
 
 
-    fun init(hook: IHook, lpparam: XC_LoadPackage.LoadPackageParam?) {
+    private fun init(hook: IHook, lpparam: XC_LoadPackage.LoadPackageParam?) {
         hook.init(lpparam?.classLoader)
         hook.hook(lpparam)
     }
-
 
 }
