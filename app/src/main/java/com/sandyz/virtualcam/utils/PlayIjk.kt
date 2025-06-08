@@ -1,5 +1,7 @@
 package com.sandyz.virtualcam.utils
 
+import android.content.Context
+import android.net.Uri
 import android.view.Surface
 import android.widget.Toast
 import tv.danmaku.ijk.media.player.IjkMediaPlayer
@@ -49,9 +51,13 @@ object PlayIjk {
             urlStr = HookUtils.app?.externalCacheDir?.path?.toString() + "/virtual.mp4"
             if (File(urlStr).exists()) {
                 toast(HookUtils.app, "播放本地视频：$urlStr", Toast.LENGTH_LONG)
-                xLog("播放本地视频：$urlStr")
+                xLog("播放本地视频：$urlStr\n uri:${Uri.fromFile(File(urlStr))}")
             } else {
-                toast(HookUtils.app, "请前往${filePath}输入视频地址！或者查看插件使用说明！", Toast.LENGTH_LONG)
+                toast(
+                    HookUtils.app,
+                    "请前往${filePath}输入视频地址！或者查看插件使用说明！",
+                    Toast.LENGTH_LONG
+                )
                 xLog("请前往${filePath}输入视频地址！或者查看插件使用说明！")
                 return
             }
@@ -59,15 +65,24 @@ object PlayIjk {
             urlStr = urlStr.replace("https", "http")
         }
         vSurface.let {
+            ijkMP.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec", 1)
             ijkMP.setSurface(it)
             ijkMP.isLooping = true
-            ijkMP.dataSource = urlStr
+            if (urlStr.startsWith("http")) {
+                ijkMP.dataSource = urlStr
+            } else {
+                ijkMP.setDataSource(HookUtils.app, Uri.fromFile(File(urlStr)))
+            }
             ijkMP.prepareAsync()
             ijkMP.setOnPreparedListener {
                 ijkMP.start()
             }
         }
-        toast(HookUtils.app, "开始播放，ijk:$ijkMP，surface:$vSurface url:$urlStr", Toast.LENGTH_SHORT)
+        toast(
+            HookUtils.app,
+            "开始播放，ijk:$ijkMP，surface:$vSurface url:$urlStr",
+            Toast.LENGTH_SHORT
+        )
         xLog("开始播放，ijk:$ijkMP，surface:$vSurface url:$urlStr")
         xLog("currentActivity: ${HookUtils.getActivities()}, currentTopActivity: ${HookUtils.getTopActivity()}")
     }

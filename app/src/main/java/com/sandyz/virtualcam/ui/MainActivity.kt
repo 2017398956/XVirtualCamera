@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+lifecycle
         val btnLocal = findViewById<Button>(R.id.btn_local)
         val btnSav = findViewById<Button>(R.id.btn_sav)
         val etUri = findViewById<EditText>(R.id.et_uri)

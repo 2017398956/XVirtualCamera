@@ -61,7 +61,7 @@ object HookUtils {
     }
 
     fun getLifecycle(): Lifecycle? {
-        // 反射获取lifecycle提高成功率
+        // 反射获取 lifecycle 提高成功率
         val activity = getTopActivity()
         mutableListOf(
             "androidx.lifecycle.LifecycleOwner",
@@ -86,10 +86,10 @@ object HookUtils {
                 if (lifecycle != null) {
                     return lifecycle
                 } else {
-                    xLog("lifecycle is null")
+                    // xLog("lifecycle is null")
                 }
             } catch (t: Throwable) {
-                xLog(t.toString())
+                // xLog(t.toString())
             }
         }
         return null
@@ -103,10 +103,10 @@ object HookUtils {
     } else {
         MyCoroutineScope().also {
             xLog("activity: ${getTopActivity()}")
-            xLog("lifecycle2: ${getLifecycle()}")
-            val activity = getTopActivity()?: return@also
-            val activityLifecycle = getLifecycle()?: return@also
-            val lifecycleEventObserver = object :LifecycleEventObserver {
+            xLog("lifecycle: ${getLifecycle()}")
+            val activity = getTopActivity() ?: return@also
+            val activityLifecycle = getLifecycle() ?: return@also
+            val lifecycleEventObserver = object : LifecycleEventObserver {
                 override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
                     if (event == Lifecycle.Event.ON_DESTROY) {
                         it.cancel()
@@ -138,12 +138,15 @@ object HookUtils {
         val instrumentation = XposedHelpers.findClass(
             "android.app.Instrumentation", lpparam.classLoader
         )
-        XposedBridge.hookAllMethods(instrumentation, "callApplicationOnCreate", object : XC_MethodHook() {
-            @Throws(Throwable::class)
-            override fun afterHookedMethod(param: MethodHookParam) {
-                app = param.args[0] as Context
-            }
-        })
+        XposedBridge.hookAllMethods(
+            instrumentation,
+            "callApplicationOnCreate",
+            object : XC_MethodHook() {
+                @Throws(Throwable::class)
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    app = param.args[0] as Context
+                }
+            })
 
         val activity = XposedHelpers.findClass(
             "android.app.Activity", lpparam.classLoader
@@ -207,12 +210,12 @@ fun toast(context: Context?, text: CharSequence, duration: Int) {
     }
 }
 
-class MyCoroutineScope: CoroutineScope {
+class MyCoroutineScope : CoroutineScope {
     private val job = Job()
     override val coroutineContext: CoroutineContext = Dispatchers.IO +
             job +
             CoroutineName("MyCoroutineScope") +
-            CoroutineExceptionHandler{ coroutineContext, throwable ->
+            CoroutineExceptionHandler { coroutineContext, throwable ->
                 xLog("coroutineException in $coroutineContext: $throwable")
             }
 }

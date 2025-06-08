@@ -50,13 +50,9 @@ class VirtualCameraBiliSmile : IHook {
     }
 
     private val fps = 30
-
     private var lastDrawTimestamp = 0L
-
     private var previewCallbackClazz: Class<*>? = null
-
     private var virtualSurfaceView: SurfaceView? = null
-
     private var camera: Camera? = null
 
     @Volatile
@@ -76,64 +72,110 @@ class VirtualCameraBiliSmile : IHook {
 
     override fun hook(lpparam: LoadPackageParam?) {
 
-        XposedHelpers.findAndHookMethod("android.hardware.Camera", lpparam?.classLoader, "startPreview", object : XC_MethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam?) {
-                xLog("应用程序开始预览startPreview    topActivity:${HookUtils.getTopActivity()}")
-                stopPreview()
-                startPreview()
-                HookUtils.dumpView(HookUtils.getContentView(), 0)
-            }
-        })
+        XposedHelpers.findAndHookMethod(
+            Camera::class.java.name,
+            lpparam?.classLoader,
+            "startPreview",
+            object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam?) {
+                    xLog("应用程序开始预览startPreview    topActivity:${HookUtils.getTopActivity()}")
+                    stopPreview()
+                    startPreview()
+                    HookUtils.dumpView(HookUtils.getContentView(), 0)
+                }
+            })
 
-        XposedHelpers.findAndHookMethod("android.hardware.Camera", lpparam?.classLoader, "stopPreview", object : XC_MethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam?) {
-                xLog("应用程序停止预览stopPreview   ")
-                stopPreview()
-            }
-        })
+        XposedHelpers.findAndHookMethod(
+            Camera::class.java.name,
+            lpparam?.classLoader,
+            "stopPreview",
+            object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam?) {
+                    xLog("应用程序停止预览stopPreview   ")
+                    stopPreview()
+                }
+            })
 
-        XposedHelpers.findAndHookMethod("android.hardware.Camera", lpparam?.classLoader, "setPreviewCallbackWithBuffer", PreviewCallback::class.java, object : XC_MethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                if (previewCallbackClazz == null) {
-                    previewCallbackClazz = param.args[0].javaClass
-                    XposedHelpers.findAndHookMethod(previewCallbackClazz, "onPreviewFrame", ByteArray::class.java, Camera::class.java, object : XC_MethodHook() {
-                        override fun beforeHookedMethod(param: MethodHookParam?) {
-                            if (drawJob?.isActive != true) return
-                            camera = param?.args?.get(1) as Camera
-                            width = camera?.parameters?.previewSize?.width ?: 0
-                            height = camera?.parameters?.previewSize?.height ?: 0
-                            xLog("onPreviewFrameWithBuffer             package:${lpparam?.packageName}          process:${lpparam?.processName}          bytearray:${param.args?.get(0)}")
-                            if (yuvByteArray != null) {
-                                val byteArray = param.args?.get(0) as ByteArray
-                                // copy the yuvByteArray to byteArray
-                                yuvByteArray?.let {
-                                    System.arraycopy(it, 0, byteArray, 0, min(byteArray.size, it.size))
+        XposedHelpers.findAndHookMethod(
+            Camera::class.java.name,
+            lpparam?.classLoader,
+            "setPreviewCallbackWithBuffer",
+            PreviewCallback::class.java,
+            object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (previewCallbackClazz == null) {
+                        previewCallbackClazz = param.args[0].javaClass
+                        XposedHelpers.findAndHookMethod(
+                            previewCallbackClazz,
+                            "onPreviewFrame",
+                            ByteArray::class.java,
+                            Camera::class.java,
+                            object : XC_MethodHook() {
+                                override fun beforeHookedMethod(param: MethodHookParam?) {
+                                    if (drawJob?.isActive != true) return
+                                    camera = param?.args?.get(1) as Camera
+                                    width = camera?.parameters?.previewSize?.width ?: 0
+                                    height = camera?.parameters?.previewSize?.height ?: 0
+                                    xLog(
+                                        "onPreviewFrameWithBuffer             package:${lpparam?.packageName}          process:${lpparam?.processName}          bytearray:${
+                                            param.args?.get(
+                                                0
+                                            )
+                                        }"
+                                    )
+                                    if (yuvByteArray != null) {
+                                        val byteArray = param.args?.get(0) as ByteArray
+                                        // copy the yuvByteArray to byteArray
+                                        yuvByteArray?.let {
+                                            System.arraycopy(
+                                                it,
+                                                0,
+                                                byteArray,
+                                                0,
+                                                min(byteArray.size, it.size)
+                                            )
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                    })
-                }
+                            })
+                    }
 
-            }
-        })
-
-        XposedHelpers.findAndHookMethod("android.hardware.Camera", lpparam?.classLoader, "setPreviewCallback", PreviewCallback::class.java, object : XC_MethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                if (previewCallbackClazz == null) {
-                    previewCallbackClazz = param.args[0].javaClass
-                    XposedHelpers.findAndHookMethod(previewCallbackClazz, "onPreviewFrame", ByteArray::class.java, Camera::class.java, object : XC_MethodHook() {
-                        override fun beforeHookedMethod(param: MethodHookParam?) {
-                            xLog("onPreviewFrame             package:${lpparam?.packageName}          process:${lpparam?.processName}          bytearray:${param?.args?.get(0)}")
-                            // clear the bytearray
-                            val byteArray = param?.args?.get(0) as ByteArray
-                            byteArray.forEachIndexed { index, _ ->
-                                byteArray[index] = 0
-                            }
-                        }
-                    })
                 }
-            }
-        })
+            })
+
+        XposedHelpers.findAndHookMethod(
+            Camera::class.java.name,
+            lpparam?.classLoader,
+            "setPreviewCallback",
+            PreviewCallback::class.java,
+            object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (previewCallbackClazz == null) {
+                        previewCallbackClazz = param.args[0].javaClass
+                        XposedHelpers.findAndHookMethod(
+                            previewCallbackClazz,
+                            "onPreviewFrame",
+                            ByteArray::class.java,
+                            Camera::class.java,
+                            object : XC_MethodHook() {
+                                override fun beforeHookedMethod(param: MethodHookParam?) {
+                                    xLog(
+                                        "onPreviewFrame             package:${lpparam?.packageName}          process:${lpparam?.processName}          bytearray:${
+                                            param?.args?.get(
+                                                0
+                                            )
+                                        }"
+                                    )
+                                    // clear the bytearray
+                                    val byteArray = param?.args?.get(0) as ByteArray
+                                    byteArray.forEachIndexed { index, _ ->
+                                        byteArray[index] = 0
+                                    }
+                                }
+                            })
+                    }
+                }
+            })
     }
 
     private suspend fun drawer() {
@@ -168,7 +210,12 @@ class VirtualCameraBiliSmile : IHook {
     }
 
 
-    private fun getRotateBitmap(bitmap: Bitmap?, rotateDegree: Float, width: Int, height: Int): Bitmap? {
+    private fun getRotateBitmap(
+        bitmap: Bitmap?,
+        rotateDegree: Float,
+        width: Int,
+        height: Int
+    ): Bitmap? {
         bitmap ?: return null
         val matrix = Matrix()
         matrix.postRotate(rotateDegree)
@@ -213,7 +260,12 @@ class VirtualCameraBiliSmile : IHook {
                     PlayIjk.play(holder.surface, ijkMediaPlayer)
                 }
 
-                override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                override fun surfaceChanged(
+                    holder: SurfaceHolder,
+                    format: Int,
+                    width: Int,
+                    height: Int
+                ) {
 
                 }
 
