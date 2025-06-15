@@ -3,6 +3,7 @@ package com.sandyz.virtualcam.utils
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -168,6 +169,7 @@ fun IHook.xLog(msg: String?) {
 
 fun xLog(msg: String?) {
     XposedBridge.log("[${Thread.currentThread().id}] $msg")
+//    Log.d("NFL", "$msg")
 }
 
 fun xLog(param: XC_MethodHook.MethodHookParam?, msg: String?, depth: Int = 15) {

@@ -3,17 +3,18 @@ package com.sandyz.virtualcam.hooks
 import android.content.res.XModuleResources
 import android.graphics.Bitmap
 import android.graphics.Matrix
-import android.graphics.SurfaceTexture
 import android.hardware.Camera
 import android.hardware.Camera.PreviewCallback
 import android.os.Build
 import android.os.Handler
 import android.view.PixelCopy
-import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
+import android.view.ViewGroup
+import android.view.ViewParent
 import android.widget.FrameLayout
+import androidx.core.view.allViews
 import com.sandyz.virtualcam.jni.EncoderJNI
 import com.sandyz.virtualcam.utils.HookUtils
 import com.sandyz.virtualcam.utils.PlayIjk
@@ -53,6 +54,8 @@ class VirtualCameraBiliSmile : IHook {
     private var lastDrawTimestamp = 0L
     private var previewCallbackClazz: Class<*>? = null
     private var virtualSurfaceView: SurfaceView? = null
+    private var existSurfaceViewParent: ViewParent? = null
+    private var existSurfaceViewLayoutParams: ViewGroup.LayoutParams? = null
     private var camera: Camera? = null
 
     @Volatile
@@ -117,11 +120,12 @@ class VirtualCameraBiliSmile : IHook {
                                     width = camera?.parameters?.previewSize?.width ?: 0
                                     height = camera?.parameters?.previewSize?.height ?: 0
                                     xLog(
-                                        "onPreviewFrameWithBuffer             package:${lpparam?.packageName}          process:${lpparam?.processName}          bytearray:${
-                                            param.args?.get(
-                                                0
-                                            )
-                                        }"
+                                        "onPreviewFrameWithBuffer\t\tpackage:${lpparam?.packageName}\t\t" +
+                                                "process:${lpparam?.processName}\t\tbytearray:${
+                                                    param.args?.get(
+                                                        0
+                                                    )
+                                                }\t\twidth:$width\t\theight:$height"
                                     )
                                     if (yuvByteArray != null) {
                                         val byteArray = param.args?.get(0) as ByteArray
@@ -160,11 +164,12 @@ class VirtualCameraBiliSmile : IHook {
                             object : XC_MethodHook() {
                                 override fun beforeHookedMethod(param: MethodHookParam?) {
                                     xLog(
-                                        "onPreviewFrame             package:${lpparam?.packageName}          process:${lpparam?.processName}          bytearray:${
-                                            param?.args?.get(
-                                                0
-                                            )
-                                        }"
+                                        "onPreviewFrame\t\tpackage:${lpparam?.packageName}\t\t" +
+                                                "process:${lpparam?.processName}\t\tbytearray:${
+                                                    param?.args?.get(
+                                                        0
+                                                    )
+                                                }"
                                     )
                                     // clear the bytearray
                                     val byteArray = param?.args?.get(0) as ByteArray
@@ -194,7 +199,7 @@ class VirtualCameraBiliSmile : IHook {
                     getBitmapByView(it)
                 }
                 bitmap = getRotateBitmap(bitmap, -90f, width, height)
-                xLog("rotatedbitmap:$bitmap, width:${bitmap?.width}, height:${bitmap?.height}")
+                xLog("rotated bitmap:$bitmap, width:${bitmap?.width}, height:${bitmap?.height}")
                 yuvByteArray = bitmap?.let { bitmapToYuv((it), width, height) }
 
                 // 根据帧率计算休眠时间
@@ -208,7 +213,6 @@ class VirtualCameraBiliSmile : IHook {
             }
         }
     }
-
 
     private fun getRotateBitmap(
         bitmap: Bitmap?,
@@ -226,7 +230,6 @@ class VirtualCameraBiliSmile : IHook {
         )
     }
 
-
     private fun newIjkMediaPlayer(): IjkMediaPlayer = IjkMediaPlayer {} // 已经加载库了就不加载了
 
     private fun resetIjkMediaPlayer() {
@@ -239,6 +242,7 @@ class VirtualCameraBiliSmile : IHook {
 
     private fun startPreview() {
         xLog("开启预览线程1")
+        val topActivity = HookUtils.getTopActivity()
         if (drawJob?.isActive == true) {
             drawJob?.cancel()
         }
@@ -246,12 +250,31 @@ class VirtualCameraBiliSmile : IHook {
             drawer()
         }
         if (virtualSurfaceView == null) {
+            if (existSurfaceViewLayoutParams == null) {
+                HookUtils.getContentView()?.allViews?.forEach {
+                    if (it is SurfaceView) {
+                        existSurfaceViewParent = it.parent
+                        existSurfaceViewLayoutParams = it.layoutParams
+//                        topActivity?.runOnUiThread {
+//                            (existSurfaceViewParent as ViewGroup).removeView(it)
+//                        }
+                        xLog("find exist surface view")
+                        return@forEach
+                    }
+                }
+            }
+
             virtualSurfaceView = SurfaceView(HookUtils.getTopActivity())
-            HookUtils.getTopActivity()?.runOnUiThread {
+            topActivity?.runOnUiThread {
                 virtualSurfaceView ?: return@runOnUiThread
-                HookUtils.getContentView()?.addView(virtualSurfaceView)
-                HookUtils.getContentView()?.getChildAt(0)?.bringToFront()
-                virtualSurfaceView?.layoutParams = FrameLayout.LayoutParams(2, 2)
+                if (existSurfaceViewLayoutParams == null) {
+                    HookUtils.getContentView()?.addView(virtualSurfaceView)
+                    virtualSurfaceView?.layoutParams = FrameLayout.LayoutParams(200, 200)
+                    virtualSurfaceView?.bringToFront()
+                } else {
+                    (existSurfaceViewParent as ViewGroup).addView(virtualSurfaceView)
+                    virtualSurfaceView?.layoutParams = existSurfaceViewLayoutParams
+                }
             }
             virtualSurfaceView?.visibility = View.VISIBLE
             virtualSurfaceView?.holder?.addCallback(object : SurfaceHolder.Callback {

@@ -5,7 +5,6 @@ import android.app.Application
 import android.app.Instrumentation
 import android.content.res.XModuleResources
 import android.content.res.XResources
-import android.util.Log
 import com.sandyz.virtualcam.hooks.IHook
 import com.sandyz.virtualcam.hooks.VirtualCameraBiliSmile
 import com.sandyz.virtualcam.hooks.VirtualCameraDy
@@ -41,37 +40,38 @@ class HookMain : IXposedHookLoadPackage, IXposedHookZygoteInit, IXposedHookInitP
         @SuppressLint("UnsafeDynamicallyLoadedCode")
         private fun loadNative() {
             val libs = arrayOf(
-                "$modulePath/lib/arm64-v8a/libijkffmpeg.so",
-                "$modulePath/lib/arm64-v8a/libijksdl.so",
-                "$modulePath/lib/arm64-v8a/libijkplayer.so",
-                "$modulePath/lib/arm64-v8a/libencoder.so",
-
-                "$modulePath/lib/armeabi-v7a/libijkffmpeg.so",
-                "$modulePath/lib/armeabi-v7a/libijksdl.so",
-                "$modulePath/lib/armeabi-v7a/libijkplayer.so",
-                "$modulePath/lib/armeabi-v7a/libencoder.so",
+//                "$modulePath/lib/arm64-v8a/libijkffmpeg.so",
+//                "$modulePath/lib/arm64-v8a/libijksdl.so",
+//                "$modulePath/lib/arm64-v8a/libijkplayer.so",
+//                "$modulePath/lib/arm64-v8a/libencoder.so",
+//
+//                "$modulePath/lib/armeabi-v7a/libijkffmpeg.so",
+//                "$modulePath/lib/armeabi-v7a/libijksdl.so",
+//                "$modulePath/lib/armeabi-v7a/libijkplayer.so",
+//                "$modulePath/lib/armeabi-v7a/libencoder.so",
 
                 "$modulePath/lib/arm64/libijkffmpeg.so",
                 "$modulePath/lib/arm64/libijksdl.so",
                 "$modulePath/lib/arm64/libijkplayer.so",
                 "$modulePath/lib/arm64/libencoder.so",
 
-                "$modulePath/lib/x86/libijkffmpeg.so",
-                "$modulePath/lib/x86/libijksdl.so",
-                "$modulePath/lib/x86/libijkplayer.so",
-                "$modulePath/lib/x86/libencoder.so",
+//                "$modulePath/lib/x86/libijkffmpeg.so",
+//                "$modulePath/lib/x86/libijksdl.so",
+//                "$modulePath/lib/x86/libijkplayer.so",
+//                "$modulePath/lib/x86/libencoder.so",
+//
+//                "$modulePath/lib/x86_64/libijkffmpeg.so",
+//                "$modulePath/lib/x86_64/libijksdl.so",
+//                "$modulePath/lib/x86_64/libijkplayer.so",
+//                "$modulePath/lib/x86_64/libencoder.so",
 
-                "$modulePath/lib/x86_64/libijkffmpeg.so",
-                "$modulePath/lib/x86_64/libijksdl.so",
-                "$modulePath/lib/x86_64/libijkplayer.so",
-                "$modulePath/lib/x86_64/libencoder.so",
-
-            )
+                )
             libs.forEach {
                 try {
                     System.load(it)
                     xLog("loadNative success $it")
-                } catch (_: Throwable) {
+                } catch (e: Exception) {
+                    xLog("loadNative failed:${e.localizedMessage}")
                 }
             }
         }
@@ -120,20 +120,23 @@ class HookMain : IXposedHookLoadPackage, IXposedHookZygoteInit, IXposedHookInitP
                 }
             }
             if (!supported) {
-                 xLog("init>>>>${it.getName()}>>>> unsupported! ===================== package: ${lpparam.packageName} process: ${lpparam.processName}")
+                xLog("init>>>>${it.getName()}>>>> unsupported! ===================== package: ${lpparam.packageName} process: ${lpparam.processName}")
             } else {
                 xLog("init>>>>${it.getName()}>>>> package: ${lpparam.packageName} process: ${lpparam.processName}")
                 loadNative()
-                XposedHelpers.findAndHookMethod(Instrumentation::class.java, "callApplicationOnCreate", Application::class.java, object : XC_MethodHook() {
-                    override fun afterHookedMethod(param: MethodHookParam) {
-                        init(it, lpparam)
-                    }
-                })
+                XposedHelpers.findAndHookMethod(
+                    Instrumentation::class.java,
+                    "callApplicationOnCreate",
+                    Application::class.java,
+                    object : XC_MethodHook() {
+                        override fun afterHookedMethod(param: MethodHookParam) {
+                            init(it, lpparam)
+                        }
+                    })
             }
             return@forEach
         }
     }
-
 
     private fun init(hook: IHook, lpparam: XC_LoadPackage.LoadPackageParam?) {
         hook.init(lpparam?.classLoader)

@@ -13,6 +13,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.sandyz.virtualcam.R
+import com.sandyz.virtualcam.utils.HookUtils
+import com.sandyz.virtualcam.utils.PlayIjk
+import tv.danmaku.ijk.media.player.IjkMediaPlayer
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
@@ -63,7 +66,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-lifecycle
         val btnLocal = findViewById<Button>(R.id.btn_local)
         val btnSav = findViewById<Button>(R.id.btn_sav)
         val etUri = findViewById<EditText>(R.id.et_uri)
@@ -107,9 +109,18 @@ lifecycle
         }
 
         btnLocal.setOnClickListener {
-            camera = Camera.open(Camera.CameraInfo.CAMERA_FACING_FRONT)
-            camera?.setPreviewDisplay(surfaceView.holder)
-            camera?.startPreview()
+            var testIjkPlayer = false
+            if (!testIjkPlayer) {
+                camera = Camera.open(Camera.CameraInfo.CAMERA_FACING_FRONT)
+                camera?.setPreviewDisplay(surfaceView.holder)
+                camera?.startPreview()
+            } else {
+                HookUtils.app = this.applicationContext
+                IjkMediaPlayer.loadLibrariesOnce(null)
+//                IjkMediaPlayer.native_profileBegin("libijkplayer.so")
+                val ijkMediaPlayer = IjkMediaPlayer()
+                PlayIjk.play(surfaceView.holder.surface, ijkMediaPlayer)
+            }
             btnLocal.isEnabled = false
         }
 
